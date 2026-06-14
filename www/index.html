@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Agences de Presse</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IM+Fell+English&display=swap">
+<style>
+:root{
+  --fs:1;
+  --bg:#070510;
+  --bg2:#120b1f;
+  --bg3:#1c1330;
+  --gold:#c9a961;
+  --gold2:#e8d2a0;
+  --line:rgba(201,169,97,0.16);
+  --gold-dim:rgba(201,169,97,0.35);
+  --text:#ece4d6;
+  --dim:#8f87a3;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;background:var(--bg);}
+body{font-family:'IM Fell English',serif;color:var(--text);font-size:calc(16px * var(--fs));}
+#app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;}
+
+/* header */
+.header{padding:calc(14px + env(safe-area-inset-top)) 16px 12px;background:var(--bg);flex-shrink:0;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.header h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:calc(22px * var(--fs));letter-spacing:0.5px;color:var(--gold2);}
+.header-actions{display:flex;gap:8px;flex-shrink:0;}
+.icon-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--bg2);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
+
+/* search */
+.search-wrap{position:relative;margin:10px 16px 0;display:none;flex-shrink:0;}
+.search-wrap.active{display:block;}
+.search-wrap input{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 36px 10px 12px;color:var(--text);font-family:inherit;font-size:calc(15px * var(--fs));outline:none;}
+.search-clear{position:absolute;right:9px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;background:var(--bg3);border:none;color:var(--dim);display:none;align-items:center;justify-content:center;font-size:12px;cursor:pointer;}
+
+/* chips */
+.chips{display:flex;gap:8px;padding:10px 16px 4px;overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch;}
+.chips::-webkit-scrollbar{display:none;}
+.chip{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1px solid var(--line);background:var(--bg2);color:var(--dim);font-size:calc(13px * var(--fs));font-family:'Cormorant Garamond',serif;cursor:pointer;white-space:nowrap;}
+.chip.active{border-color:var(--gold);color:var(--gold2);background:var(--bg3);}
+
+/* main */
+.main{flex:1;position:relative;overflow-y:auto;padding:6px 16px calc(12px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;}
+.main.flush{overflow:hidden;padding:0;}
+.view{display:none;}
+.view.active{display:block;}
+
+/* list */
+.card{border:1px solid var(--line);background:var(--bg2);border-radius:14px;padding:14px;margin-top:10px;display:flex;gap:12px;align-items:center;cursor:pointer;}
+.card-media{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.card-thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;display:block;background:var(--bg3);border:1px solid var(--line);}
+.card-thumb-ph{width:44px;height:44px;border-radius:10px;background:var(--bg3);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:18px;opacity:0.5;}
+.card-flag{font-size:24px;line-height:1;flex-shrink:0;}
+.card-info{flex:1;min-width:0;}
+.card-name{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:calc(17px * var(--fs));color:var(--gold2);}
+.card-meta{font-size:calc(13px * var(--fs));color:var(--dim);margin-top:2px;}
+.card-arrow{color:var(--gold);opacity:0.6;font-size:18px;}
+.empty{text-align:center;color:var(--dim);padding:40px 10px;font-family:'Cormorant Garamond',serif;font-size:calc(16px * var(--fs));}
+
+/* detail */
+.back-btn{background:none;border:none;color:var(--gold);font-size:calc(15px * var(--fs));font-family:'Cormorant Garamond',serif;cursor:pointer;padding:10px 0 12px;display:flex;align-items:center;gap:4px;}
+.detail-img{width:100%;height:180px;border-radius:14px;background:linear-gradient(135deg,var(--bg3),var(--bg2));display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:6px;border:1px solid var(--line);}
+.detail-img img{width:100%;height:100%;object-fit:cover;}
+.detail-img .ph{font-size:42px;opacity:0.3;}
+.img-note{font-size:calc(11px * var(--fs));color:var(--dim);opacity:0.6;margin-bottom:14px;font-family:'Cormorant Garamond',serif;}
+.detail-title{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:calc(26px * var(--fs));color:var(--gold2);margin-bottom:4px;line-height:1.2;}
+.detail-sub{font-size:calc(14px * var(--fs));color:var(--dim);margin-bottom:14px;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.detail-stat{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+.detail-stat .lbl{font-size:calc(11px * var(--fs));color:var(--dim);text-transform:uppercase;letter-spacing:0.5px;}
+.detail-stat .val{font-family:'Cormorant Garamond',serif;font-size:calc(16px * var(--fs));color:var(--gold2);margin-top:2px;}
+.detail-fact{font-size:calc(15px * var(--fs));line-height:1.6;color:var(--text);background:var(--bg2);border-left:3px solid var(--gold);border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:14px;}
+.detail-map-btn{display:block;width:100%;padding:12px;border-radius:10px;border:1px solid var(--gold-dim);background:var(--bg2);color:var(--gold2);font-family:'Cormorant Garamond',serif;font-size:calc(15px * var(--fs));text-align:center;cursor:pointer;margin-bottom:24px;}
+
+/* map */
+#view-map{position:absolute;top:0;left:0;right:0;bottom:0;}
+#map{width:100%;height:100%;background:var(--bg2);}
+.map-pin{font-size:22px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.6));}
+.leaflet-popup-content-wrapper{background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:10px;}
+.leaflet-popup-tip{background:var(--bg2);}
+.leaflet-popup-content{font-family:'Cormorant Garamond',serif;font-size:14px;}
+.popup-name{color:var(--gold2);font-weight:600;display:block;margin-bottom:6px;}
+.popup-btn{border:1px solid var(--gold-dim);background:var(--bg3);color:var(--gold2);border-radius:8px;padding:4px 10px;font-family:'Cormorant Garamond',serif;font-size:13px;cursor:pointer;}
+
+/* mes apps */
+.cat-chips{display:flex;gap:8px;padding-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.cat-chips::-webkit-scrollbar{display:none;}
+.mosaic{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 8px;}
+.mosaic-item{display:flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;}
+.mosaic-icon{width:56px;height:56px;border-radius:13px;background:var(--bg2);border:1px solid var(--line);}
+.mosaic-name{font-size:9px;color:var(--dim);text-align:center;line-height:1.2;font-family:'Cormorant Garamond',serif;}
+
+/* tabbar */
+.tabbar{display:flex;flex-shrink:0;border-top:1px solid var(--line);background:var(--bg);padding:8px 0 calc(8px + env(safe-area-inset-bottom));}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;border:none;background:none;color:var(--dim);font-size:calc(11px * var(--fs));font-family:'Cormorant Garamond',serif;cursor:pointer;}
+.tab .ic{font-size:20px;}
+.tab.active{color:var(--gold2);}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1 id="appTitle"></h1>
+    <div class="header-actions">
+      <button class="icon-btn" id="btnSearch">🔍</button>
+      <button class="icon-btn" id="btnLang">🇫🇷</button>
+    </div>
+  </div>
+
+  <div class="search-wrap" id="searchWrap">
+    <input type="text" id="searchInput" placeholder="">
+    <button class="search-clear" id="searchClear">✕</button>
+  </div>
+
+  <div class="chips" id="chipsRow"></div>
+
+  <div class="main" id="main">
+    <div class="view active" id="view-list"></div>
+
+    <div class="view" id="view-detail"></div>
+
+    <div class="view" id="view-map">
+      <div id="map"></div>
+    </div>
+
+    <div class="view" id="view-myapps"></div>
+  </div>
+
+  <nav class="tabbar">
+    <button class="tab active" id="tabList" data-view="list"><span class="ic">📋</span><span class="lbl"></span></button>
+    <button class="tab" id="tabMap" data-view="map"><span class="ic">🗺️</span><span class="lbl"></span></button>
+    <button class="tab" id="tabApps" data-view="myapps"><span class="ic">📱</span><span class="lbl"></span></button>
+  </nav>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+/* =========================================================
+   DONNEES — champs:
+   id, nf/ne (nom FR/EN), pf/pe (pays FR/EN), cont (continent),
+   ville, fond (fondation), sf/se (statut FR/EN), lat, lng,
+   lang (langues), wiki (titre article Wikipedia pour le script
+   de récupération d'images), wl (URL logo Wikimedia — liste),
+   wb (URL photo du siège/bâtiment Wikimedia — fiche détail),
+   ff/fe (fait FR/EN)
+   ========================================================= */
+const DATA = [
+{id:1,nf:"Agence France-Presse (AFP)",ne:"Agence France-Presse (AFP)",pf:"France",pe:"France",cont:"Europe",ville:"Paris",fond:1835,sf:"Statut spécial (loi de 1957)",se:"Special legal status (1957 law)",lat:48.8694,lng:2.3417,lang:"FR, EN, ES, AR, DE, PT",wiki:"Agence France-Presse",wl:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgXHy3cTr9fwAf8_-t0afOO4L6mun33SQ-zA&s",wb:"https://upload.wikimedia.org/wikipedia/en/thumb/2/2b/Si%C3%A8ge_de_l%27AFP_13_place_de_la_Bourse_Paris.jpg/960px-Si%C3%A8ge_de_l%27AFP_13_place_de_la_Bourse_Paris.jpg",ff:"Héritière de l'agence Havas (1835), considérée comme la plus ancienne agence de presse au monde.",fe:"Heir to the Havas agency (1835), considered the world's oldest news agency."},
+{id:2,nf:"Reuters",ne:"Reuters",pf:"Royaume-Uni",pe:"United Kingdom",cont:"Europe",ville:"Londres",fond:1851,sf:"Privée (filiale de Thomson Reuters)",se:"Private (Thomson Reuters subsidiary)",lat:51.5046,lng:-0.0150,lang:"EN, ES, FR, DE, JA, AR, ZH",wiki:"Reuters",wl:"data:image/jpeg;base64,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k2jdjpnvWaIqESu+NVlud7sduhtFFLVyxVnaPZHjIb2bxnn5kLScFtN3uy3u4TXe2T0kclMGsdLjDjuzjkVb6IPhXUkFfRT0dXGJKeeN0cjD0c0jBC5uuXDrVVDcqiCktVZURwykQ1URaN4B914OeR6HyK6YRBoLXFLqTSEVPqi3OinqYOzraaQY94ciRg8skbhg5GR3hU/qPhRqGy1ntOnnPuFOx26J8UgjqIvjzGSPFpyfAK/0Qc2T2XiJeWCiqqa/1MYwOyqpXiM46Z3uDT8SrG4Z8M36frG3i+vikr2tIggjOWwZGC4u73YyOXIZPXqLNRBDuJeixrC1RCmkZFcaQl1O9/yXA43Md4A4HPuIHmqRfovWNrq/2dnucUwy0S0mTy8nsPT1XT6IOd4eGGqay1V11uEUratrAYaaWTtJ6h2RnJycDbnGTnOOg673g9pe/WfV8lXdbVUUlOaGSMSSYwXF8ZA5HyKutEFO8VuHV0uV7kvlggFV7Q1vtFOHhrw9oDdw3EAgtA5dcjvzyg1HonWME8eyyXCNnaNc7a4AdRk8nLptEEV19oii1jQsbI/2evgz7PUhucZ6tcO9p/Du7801Jo3Xul6qT2Cnr2g8jNa53OZL6NIcf4mro9EHM8+lde3R/tNTbrxUvPLfUzHdjw992QEXTCIPhVVtLR7Pa6mGDecM7WQN3HwGeq+6rPiJY7tV31tVT0s1VTyRtYzsm7thHUEDpz556c1NtK0dVb9PUNLXuzURx4cM52jJIb6DA9FPjzWtltSa6iPazNxsdMFMkX3M+kcoND1NLqv9aOrY3UrZ3TtAz2jiSTg93f1zz8BlTlEWmPFXHExX2yz8jJnmJvP1GhERaMBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREH//Z",wb:"https://upload.wikimedia.org/wikipedia/commons/c/cb/Exterior_of_5_Canada_Square.jpg",ff:"Fondée par Paul Reuter en 1851 pour transmettre les cours de la Bourse de Londres par télégraphe.",fe:"Founded by Paul Reuter in 1851 to transmit London Stock Exchange prices by telegraph."},
+{id:3,nf:"Associated Press (AP)",ne:"Associated Press (AP)",pf:"États-Unis",pe:"United States",cont:"Amérique du Nord",ville:"New York",fond:1846,sf:"Coopérative à but non lucratif",se:"Non-profit cooperative",lat:40.7115,lng:-74.0134,lang:"EN, ES",wiki:"Associated Press",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Associated_Press_logo_2012.svg/960px-Associated_Press_logo_2012.svg.png",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/AP_headquarters.jpg/960px-AP_headquarters.jpg",ff:"Coopérative détenue par ses membres, qui regroupe plus de 1700 médias américains.",fe:"Member-owned cooperative serving more than 1,700 US news organizations."},
+{id:4,nf:"Bloomberg News",ne:"Bloomberg News",pf:"États-Unis",pe:"United States",cont:"Amérique du Nord",ville:"New York",fond:1981,sf:"Privée",se:"Private",lat:40.7636,lng:-73.9722,lang:"EN, multilingue",wiki:"Bloomberg News",wl:"https://thumbs.dreamstime.com/b/ic-ne-de-logo-de-bloomberg-imprimée-sur-le-papier-et-placée-sur-le-backgro-blanc-79842594.jpg",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Bloomberg_Tower_%2855273671683%29.jpg/960px-Bloomberg_Tower_%2855273671683%29.jpg",ff:"Fondée par Michael Bloomberg, futur maire de New York, spécialisée dans l'information financière.",fe:"Founded by Michael Bloomberg, future Mayor of New York, focused on financial news."},
+{id:5,nf:"TASS",ne:"TASS",pf:"Russie",pe:"Russia",cont:"Europe",ville:"Moscou",fond:1904,sf:"Agence d'État",se:"State agency",lat:55.7607,lng:37.6048,lang:"RU, EN",wiki:"TASS",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/TASS_Logo_%28Latin%29_2022.svg/960px-TASS_Logo_%28Latin%29_2022.svg.png",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Moscow_TASS_3542.JPG/960px-Moscow_TASS_3542.JPG",ff:"Héritière de l'agence télégraphique de Saint-Pétersbourg (1904), agence officielle de l'État russe.",fe:"Heir to the Saint Petersburg Telegraph Agency (1904), the official Russian state news agency."},
+{id:6,nf:"Interfax",ne:"Interfax",pf:"Russie",pe:"Russia",cont:"Europe",ville:"Moscou",fond:1989,sf:"Privée",se:"Private",lat:55.7800,lng:37.5800,lang:"RU, EN",wiki:"Interfax",wl:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxFlaWNbEbDLSsxUFw1pn7RZCWplTxhabvDQ&s",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Interfax_Press_Center_Tverskaya_-_Conference_room.jpg/500px-Interfax_Press_Center_Tverskaya_-_Conference_room.jpg",ff:"Première agence de presse indépendante créée en URSS, en 1989, durant la perestroïka.",fe:"The first independent news agency founded in the USSR, in 1989, during perestroika."},
+{id:7,nf:"Xinhua (Agence de Chine nouvelle)",ne:"Xinhua News Agency",pf:"Chine",pe:"China",cont:"Asie",ville:"Pékin",fond:1931,sf:"Agence d'État",se:"State agency",lat:39.9000,lng:116.3667,lang:"ZH, EN, FR, ES, AR, RU, PT",wiki:"Xinhua News Agency",wl:"https://play-lh.googleusercontent.com/xePQOydr4NbMootQSp4IuKx83o8IwvpmLZh1EKdscWwgU9A8qCvfhamaF9qqr467ug",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Main_Building_of_Xinhua_News_Agency.jpg/960px-Main_Building_of_Xinhua_News_Agency.jpg",ff:"Fondée en 1931 dans une région contrôlée par le Parti communiste chinois, avant la fondation de la République populaire.",fe:"Founded in 1931 in a region controlled by the Chinese Communist Party, before the founding of the People's Republic."},
+{id:8,nf:"Kyodo News",ne:"Kyodo News",pf:"Japon",pe:"Japan",cont:"Asie",ville:"Tokyo",fond:1945,sf:"Coopérative à but non lucratif",se:"Non-profit cooperative",lat:35.6620,lng:139.7600,lang:"JA, EN",wiki:"Kyodo News",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Kyodo_News_logo.svg/960px-Kyodo_News_logo.svg.png",wb:"",ff:"Coopérative formée en 1945 par 54 quotidiens japonais après la dissolution de l'agence Domei.",fe:"Cooperative formed in 1945 by 54 Japanese newspapers after the dissolution of the Domei agency."},
+{id:9,nf:"Jiji Press",ne:"Jiji Press",pf:"Japon",pe:"Japan",cont:"Asie",ville:"Tokyo",fond:1945,sf:"Privée",se:"Private",lat:35.6745,lng:139.7454,lang:"JA, EN",wiki:"Jiji Press",wl:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQPZmzWfjDaMopnOT1YX2QIpf6DSz-P-AQBg&s",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Jiji_Press_HQ.jpg/960px-Jiji_Press_HQ.jpg",ff:"Créée la même année que Kyodo, en 1945, à partir des actifs de l'ancienne agence Domei.",fe:"Created the same year as Kyodo, in 1945, from the assets of the former Domei agency."},
+{id:10,nf:"Yonhap News Agency",ne:"Yonhap News Agency",pf:"Corée du Sud",pe:"South Korea",cont:"Asie",ville:"Séoul",fond:1980,sf:"Semi-publique",se:"Semi-public",lat:37.5547,lng:126.9707,lang:"KO, EN",wiki:"Yonhap News Agency",wl:"https://play-lh.googleusercontent.com/-iDbLW8dhhOL8SsLonI_VWcpvbU7uc9dapyF4T-9AqgfGtmno-eWvTGqID6mzW3m7w=w600-h300-pc0xffffff-pd",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/%EC%97%B0%ED%95%A9%EB%89%B4%EC%8A%A4_%EC%82%AC%EC%98%A5_%EC%82%AC%EC%A7%84.jpg/960px-%EC%97%B0%ED%95%A9%EB%89%B4%EC%8A%A4_%EC%82%AC%EC%98%A5_%EC%82%AC%EC%A7%84.jpg",ff:"Née en 1980 de la fusion forcée de plusieurs agences sud-coréennes sous le régime militaire.",fe:"Born in 1980 from the forced merger of several South Korean agencies under military rule."},
+{id:11,nf:"ANSA",ne:"ANSA",pf:"Italie",pe:"Italy",cont:"Europe",ville:"Rome",fond:1945,sf:"Coopérative",se:"Cooperative",lat:41.8986,lng:12.4823,lang:"IT, EN, ES, AR",wiki:"ANSA (news agency)",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/ANSA_logo.svg/960px-ANSA_logo.svg.png",wb:"",ff:"Coopérative fondée en 1945 par 16 quotidiens italiens à la sortie de la Seconde Guerre mondiale.",fe:"Cooperative founded in 1945 by 16 Italian dailies at the end of World War II."},
+{id:12,nf:"Deutsche Presse-Agentur (DPA)",ne:"Deutsche Presse-Agentur (DPA)",pf:"Allemagne",pe:"Germany",cont:"Europe",ville:"Hambourg",fond:1949,sf:"Coopérative privée",se:"Private cooperative",lat:53.5653,lng:9.9847,lang:"DE, EN, ES, AR",wiki:"Deutsche Presse-Agentur",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Dpa_Logo_2021.svg/960px-Dpa_Logo_2021.svg.png",wb:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS1nmSXuemmd8SCFf5PZUFVo7KQH_KqeryjJA&s",ff:"Née en 1949 de la fusion de trois agences créées dans les zones d'occupation alliées.",fe:"Born in 1949 from the merger of three agencies created in the Allied occupation zones."},
+{id:13,nf:"EFE",ne:"EFE",pf:"Espagne",pe:"Spain",cont:"Europe",ville:"Madrid",fond:1939,sf:"Majorité publique",se:"Majority state-owned",lat:40.4350,lng:-3.6890,lang:"ES, EN, PT, AR",wiki:"EFE",wl:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTh5A_9vd61Nv0ijHQXhByxs8mkHG_TAV4BZQ&s",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Madrid_-_sede_de_la_Agencia_EFE_1.JPG/960px-Madrid_-_sede_de_la_Agencia_EFE_1.JPG",ff:"Créée en 1939 par le régime franquiste, c'est aujourd'hui la principale agence en langue espagnole.",fe:"Created in 1939 under the Franco regime, it is now the leading Spanish-language news agency."},
+{id:14,nf:"Press Trust of India (PTI)",ne:"Press Trust of India (PTI)",pf:"Inde",pe:"India",cont:"Asie",ville:"New Delhi",fond:1949,sf:"Coopérative",se:"Cooperative",lat:28.6258,lng:77.2151,lang:"EN, HI",wiki:"Press Trust of India",wl:"https://upload.wikimedia.org/wikipedia/en/thumb/5/5c/Press_Trust_of_India_logo.svg/960px-Press_Trust_of_India_logo.svg.png",wb:"",ff:"Coopérative détenue par environ 500 journaux indiens, la plus grande agence du pays.",fe:"Cooperative owned by roughly 500 Indian newspapers, the country's largest news agency."},
+{id:15,nf:"Agence Anadolu",ne:"Anadolu Agency",pf:"Turquie",pe:"Turkey",cont:"Moyen-Orient",ville:"Ankara",fond:1920,sf:"Agence d'État",se:"State agency",lat:39.8856,lng:32.8345,lang:"TR, EN, AR, FR, multilingue",wiki:"Anadolu Agency",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Anadolu_Agency_logo_2023_%282%29.svg/960px-Anadolu_Agency_logo_2023_%282%29.svg.png",wb:"",ff:"Fondée en 1920 par Mustafa Kemal Atatürk pendant la guerre d'indépendance turque.",fe:"Founded in 1920 by Mustafa Kemal Atatürk during the Turkish War of Independence."},
+{id:16,nf:"Belga",ne:"Belga",pf:"Belgique",pe:"Belgium",cont:"Europe",ville:"Bruxelles",fond:1920,sf:"Coopérative",se:"Cooperative",lat:50.8466,lng:4.3528,lang:"FR, NL",wiki:"Belga (news agency)",wl:"https://upload.wikimedia.org/wikipedia/en/thumb/f/f2/Logo_of_Belga_News_Agency.svg/960px-Logo_of_Belga_News_Agency.svg.png",wb:"",ff:"Coopérative belge fondée en 1920, elle couvre l'actualité en français et en néerlandais.",fe:"Belgian cooperative founded in 1920, covering news in both French and Dutch."},
+{id:17,nf:"ANP",ne:"ANP",pf:"Pays-Bas",pe:"Netherlands",cont:"Europe",ville:"La Haye",fond:1934,sf:"Privée (coopérative de médias)",se:"Private (media cooperative)",lat:52.0786,lng:4.2885,lang:"NL",wiki:"Algemeen Nederlands Persbureau",wl:"https://upload.wikimedia.org/wikipedia/commons/8/8c/Logo_ANP.jpg",wb:"",ff:"Fondée en 1934, c'est la principale source d'information des médias néerlandais.",fe:"Founded in 1934, it is the main news source for Dutch media outlets."},
+{id:18,nf:"Saudi Press Agency (SPA)",ne:"Saudi Press Agency (SPA)",pf:"Arabie saoudite",pe:"Saudi Arabia",cont:"Moyen-Orient",ville:"Riyad",fond:1970,sf:"Agence d'État",se:"State agency",lat:24.6745,lng:46.7298,lang:"AR, EN",wiki:"Saudi Press Agency",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Saudi_Press_Agency_Logo.svg/960px-Saudi_Press_Agency_Logo.svg.png",wb:"",ff:"Agence officielle du royaume d'Arabie saoudite, créée en 1970.",fe:"Official news agency of the Kingdom of Saudi Arabia, created in 1970."},
+{id:19,nf:"Agence WAM",ne:"Emirates News Agency (WAM)",pf:"Émirats arabes unis",pe:"United Arab Emirates",cont:"Moyen-Orient",ville:"Abou Dabi",fond:1976,sf:"Agence d'État",se:"State agency",lat:24.4667,lng:54.3667,lang:"AR, EN",wiki:"Emirates News Agency",wl:"https://en.wikipedia.org/wiki/Special:FilePath/Emirates%20News%20Agency%20logo.svg?width=120",wb:"",ff:"Agence officielle des Émirats arabes unis, en activité depuis 1976.",fe:"Official news agency of the United Arab Emirates, operating since 1976."},
+{id:20,nf:"Middle East News Agency (MENA)",ne:"Middle East News Agency (MENA)",pf:"Égypte",pe:"Egypt",cont:"Afrique",ville:"Le Caire",fond:1955,sf:"Agence d'État",se:"State agency",lat:30.0511,lng:31.2243,lang:"AR, EN",wiki:"Middle East News Agency",wl:"data:image/jpeg;base64,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",wb:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRnChKIaLApSgRYGa34ud_Rogf5Z3F-y85LnA&s",ff:"Plus ancienne agence de presse du monde arabe et d'Afrique, fondée en 1955.",fe:"The oldest news agency in the Arab world and Africa, founded in 1955."},
+{id:21,nf:"Polska Agencja Prasowa (PAP)",ne:"Polish Press Agency (PAP)",pf:"Pologne",pe:"Poland",cont:"Europe",ville:"Varsovie",fond:1918,sf:"Entreprise publique",se:"State-owned company",lat:52.2390,lng:21.0118,lang:"PL, EN",wiki:"Polish Press Agency",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/PAP_logo.svg/960px-PAP_logo.svg.png",wb:"",ff:"Ses origines remontent à 1918, année de l'indépendance retrouvée de la Pologne.",fe:"Its origins date back to 1918, the year Poland regained independence."},
+{id:22,nf:"Česká tisková kancelář (ČTK)",ne:"Czech News Agency (ČTK)",pf:"République tchèque",pe:"Czech Republic",cont:"Europe",ville:"Prague",fond:1918,sf:"Publique indépendante (statut légal spécial)",se:"Independent public agency (special legal status)",lat:50.0598,lng:14.4378,lang:"CS, EN",wiki:"Czech News Agency",wl:"https://en.wikipedia.org/wiki/Special:FilePath/CTK%20logo%20en.svg?width=120",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Praha_Nove_Mesto_Opletalova_5_CTK.jpg/960px-Praha_Nove_Mesto_Opletalova_5_CTK.jpg",ff:"Fondée en 1918, elle devient une agence publique indépendante après la chute du communisme en 1992.",fe:"Founded in 1918, it became an independent public agency after the fall of communism in 1992."},
+{id:23,nf:"Tidningarnas Telegrambyrå (TT)",ne:"TT News Agency",pf:"Suède",pe:"Sweden",cont:"Europe",ville:"Stockholm",fond:1921,sf:"Privée (détenue par les groupes de presse)",se:"Private (owned by press groups)",lat:59.3293,lng:18.0686,lang:"SV",wiki:"TT News Agency",wl:"https://upload.wikimedia.org/wikipedia/commons/a/ab/TTlogo_st%C3%A5ende_b.png",wb:"https://images.seeklogo.com/logo-png/40/1/telam-logo-png_seeklogo-406494.png",ff:"Agence suédoise fondée en 1921, détenue par les principaux groupes de presse du pays.",fe:"Swedish agency founded in 1921, owned by the country's major press groups."},
+{id:24,nf:"Norsk Telegrambyrå (NTB)",ne:"Norwegian News Agency (NTB)",pf:"Norvège",pe:"Norway",cont:"Europe",ville:"Oslo",fond:1867,sf:"Coopérative privée",se:"Private cooperative",lat:59.9127,lng:10.7461,lang:"NO",wiki:"Norsk Telegrambyrå",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Norwegian_News_Agency_logo.svg/960px-Norwegian_News_Agency_logo.svg.png",wb:"",ff:"Une des plus anciennes agences de presse au monde encore en activité, fondée en 1867.",fe:"One of the oldest news agencies in the world still in operation, founded in 1867."},
+{id:25,nf:"Ritzaus Bureau",ne:"Ritzau",pf:"Danemark",pe:"Denmark",cont:"Europe",ville:"Copenhague",fond:1866,sf:"Coopérative",se:"Cooperative",lat:55.6867,lng:12.5700,lang:"DA",wiki:"Ritzau",wl:"https://via.ritzau.dk/data/images/00563/7b3e9562-5109-4c13-a6d6-fe4d61ef0684.jpg",wb:"https://media.licdn.com/dms/image/v2/D4E0BAQGUFAAKywhMTw/company-logo_200_200/B4EZ5p3RckLAAI-/0/1779892557808/ritzaus_bureau_logo?e=2147483647&v=beta&t=CDzWE9gkmV43usetuC8PPDyOE0yVRVUQOgQ47ZQPO-s",ff:"Agence danoise fondée en 1866, la plus ancienne des agences scandinaves encore active.",fe:"Danish agency founded in 1866, the oldest of the Scandinavian agencies still active."},
+{id:26,nf:"Keystone-ATS",ne:"Keystone-ATS",pf:"Suisse",pe:"Switzerland",cont:"Europe",ville:"Berne",fond:1894,sf:"Coopérative",se:"Cooperative",lat:46.9489,lng:7.4376,lang:"DE, FR, IT",wiki:"Keystone-ATS",wl:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwrhs5VR4h8iKjWapWodGh2TZWr1y88AO0Qw&s",wb:"",ff:"Née en 2018 de la fusion de l'agence suisse ATS (fondée en 1894) et de l'agence photo Keystone.",fe:"Born in 2018 from the merger of the Swiss ATS agency (founded in 1894) and the Keystone photo agency."},
+{id:27,nf:"Austria Presse Agentur (APA)",ne:"Austria Presse Agentur (APA)",pf:"Autriche",pe:"Austria",cont:"Europe",ville:"Vienne",fond:1946,sf:"Coopérative",se:"Cooperative",lat:48.2168,lng:16.3654,lang:"DE",wiki:"Austria Presse Agentur",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/APA.svg/960px-APA.svg.png",wb:"",ff:"Coopérative autrichienne fondée en 1946, détenue par les principaux médias du pays.",fe:"Austrian cooperative founded in 1946, owned by the country's main media outlets."},
+{id:28,nf:"Prensa Latina",ne:"Prensa Latina",pf:"Cuba",pe:"Cuba",cont:"Amérique du Sud",ville:"La Havane",fond:1959,sf:"Agence d'État",se:"State agency",lat:23.1352,lng:-82.3835,lang:"ES, EN, PT",wiki:"Prensa Latina",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/LOGO_PRENSA_LATINA_%28cropped%29.png/960px-LOGO_PRENSA_LATINA_%28cropped%29.png",wb:"",ff:"Agence officielle cubaine créée en 1959, juste après la révolution.",fe:"Official Cuban agency created in 1959, shortly after the revolution."},
+{id:29,nf:"Agência Brasil",ne:"Agência Brasil",pf:"Brésil",pe:"Brazil",cont:"Amérique du Sud",ville:"Brasilia",fond:2007,sf:"Agence publique (gérée par l'EBC)",se:"State agency (run by EBC)",lat:-15.7975,lng:-47.8919,lang:"PT",wiki:"Agência Brasil",wl:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQnMNo2-x0Jq341FP7Hu_p92_W8_ULQ0aWQaA&s",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Agência_Brasil_logo.svg/3840px-Agência_Brasil_logo.svg.png",ff:"Agence publique brésilienne gérée par l'Empresa Brasil de Comunicação (EBC).",fe:"Brazilian state agency run by Empresa Brasil de Comunicação (EBC)."},
+{id:30,nf:"Australian Associated Press (AAP)",ne:"Australian Associated Press (AAP)",pf:"Australie",pe:"Australia",cont:"Océanie",ville:"Sydney",fond:1935,sf:"Coopérative à but non lucratif (depuis 2021)",se:"Non-profit cooperative (since 2021)",lat:-33.8688,lng:151.2093,lang:"EN",wiki:"Australian Associated Press",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/AAP-SVG-Logo-Black.svg/960px-AAP-SVG-Logo-Black.svg.png",wb:"",ff:"Fondée en 1935, elle a été relancée en coopérative à but non lucratif après sa fermeture en 2020.",fe:"Founded in 1935, it was relaunched as a non-profit cooperative after shutting down in 2020."},
+{id:31,nf:"Central News Agency (CNA)",ne:"Central News Agency (CNA)",pf:"Taïwan",pe:"Taiwan",cont:"Asie",ville:"Taipei",fond:1924,sf:"Agence publique",se:"State-funded agency",lat:25.0375,lng:121.5637,lang:"ZH, EN",wiki:"Central News Agency (Taiwan)",wl:"https://static.wikia.nocookie.net/logopedia/images/6/61/Central_News_1.png/revision/latest?cb=20160424075521",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Zhi_Ching_Building_20101011.jpg/960px-Zhi_Ching_Building_20101011.jpg",ff:"Agence officielle de Taïwan, fondée en 1924 sur le continent chinois avant de s'installer à Taipei.",fe:"Taiwan's official news agency, founded in 1924 on the mainland before relocating to Taipei."},
+{id:32,nf:"News Agency of Nigeria (NAN)",ne:"News Agency of Nigeria (NAN)",pf:"Nigeria",pe:"Nigeria",cont:"Afrique",ville:"Abuja",fond:1978,sf:"Agence d'État",se:"State agency",lat:9.0579,lng:7.4951,lang:"EN",wiki:"News Agency of Nigeria",wl:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTqpL-m3K26ah-0Pjccn_YYsCgmdNY1Hb67tQ&s",wb:"https://upload.wikimedia.org/wikipedia/commons/c/c5/Nan_hq.jpg",ff:"Agence officielle du Nigeria, lancée en 1978 pour couvrir l'actualité de l'Afrique de l'Ouest.",fe:"Nigeria's official news agency, launched in 1978 to cover West African news."},
+{id:33,nf:"Maghreb Arabe Presse (MAP)",ne:"Maghreb Arab Press (MAP)",pf:"Maroc",pe:"Morocco",cont:"Afrique",ville:"Rabat",fond:1959,sf:"Agence d'État",se:"State agency",lat:34.0209,lng:-6.8417,lang:"AR, FR, EN, ES",wiki:"Maghreb Arabe Presse",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/MAPmaroc-logo.jpg/960px-MAPmaroc-logo.jpg",wb:"",ff:"Agence officielle du royaume du Maroc, fondée en 1959, trois ans après l'indépendance.",fe:"Official news agency of the Kingdom of Morocco, founded in 1959, three years after independence."},
+{id:34,nf:"Tunis Afrique Presse (TAP)",ne:"Tunis Afrique Presse (TAP)",pf:"Tunisie",pe:"Tunisia",cont:"Afrique",ville:"Tunis",fond:1961,sf:"Agence d'État",se:"State agency",lat:36.8065,lng:10.1815,lang:"AR, FR, EN",wiki:"Tunis Afrique Presse",wl:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOuEvkdPohkAc4tqdGCZoEi_bhcUfLZ3khfQ&s",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Tap_headquarters.JPG/960px-Tap_headquarters.JPG",ff:"Agence officielle tunisienne créée en 1961, cinq ans après l'indépendance du pays.",fe:"Official Tunisian news agency created in 1961, five years after the country's independence."},
+{id:35,nf:"Angola Press (ANGOP)",ne:"Angola Press (ANGOP)",pf:"Angola",pe:"Angola",cont:"Afrique",ville:"Luanda",fond:1975,sf:"Agence d'État",se:"State agency",lat:-8.8390,lng:13.2894,lang:"PT, EN, FR",wiki:"Angola Press Agency",wl:"https://upload.wikimedia.org/wikipedia/commons/4/4f/Logo_Angop.jpg",wb:"",ff:"Créée en 1975, l'année de l'indépendance de l'Angola, c'est l'agence officielle du pays.",fe:"Created in 1975, the year of Angola's independence, it is the country's official news agency."},
+{id:36,nf:"Ghana News Agency (GNA)",ne:"Ghana News Agency (GNA)",pf:"Ghana",pe:"Ghana",cont:"Afrique",ville:"Accra",fond:1957,sf:"Agence d'État",se:"State agency",lat:5.5500,lng:-0.2000,lang:"EN",wiki:"Ghana News Agency",wl:"https://en.wikipedia.org/wiki/Special:FilePath/Ghana%20News%20Agency%20logo.png?width=120",wb:"",ff:"Fondée en 1957, l'année de l'indépendance du Ghana, sur le modèle de Reuters et de l'agence soviétique TASS.",fe:"Founded in 1957, the year of Ghana's independence, modelled on Reuters and the Soviet TASS agency."},
+{id:37,nf:"Télam",ne:"Télam",pf:"Argentine",pe:"Argentina",cont:"Amérique du Sud",ville:"Buenos Aires",fond:1945,sf:"Agence d'État",se:"State agency",lat:-34.6037,lng:-58.3816,lang:"ES",wiki:"Télam",wl:"https://images.seeklogo.com/logo-png/40/1/telam-logo-png_seeklogo-406494.png",wb:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Sede_T%C3%A9lam_02.jpg/960px-Sede_T%C3%A9lam_02.jpg",ff:"Agence de presse publique argentine fondée en 1945, principale source d'information officielle du pays.",fe:"Argentine state news agency founded in 1945, the country's main official news source."},
+{id:38,nf:"Andina",ne:"Andina",pf:"Pérou",pe:"Peru",cont:"Amérique du Sud",ville:"Lima",fond:1981,sf:"Agence publique",se:"State-run agency",lat:-12.0464,lng:-77.0428,lang:"ES",wiki:"Andina (news agency)",wl:"https://en.wikipedia.org/wiki/Special:FilePath/Logo%20Andina.svg?width=120",wb:"",ff:"Agence de presse publique péruvienne, créée en 1981 et gérée par l'État.",fe:"Peruvian state-run news agency, created in 1981 and operated by the government."},
+{id:39,nf:"The Canadian Press",ne:"The Canadian Press",pf:"Canada",pe:"Canada",cont:"Amérique du Nord",ville:"Toronto",fond:1917,sf:"Coopérative à l'origine, privée depuis 2010",se:"Originally a cooperative, private since 2010",lat:43.6532,lng:-79.3832,lang:"EN, FR",wiki:"The Canadian Press",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/TheCanadianPress.jpg/960px-TheCanadianPress.jpg",wb:"",ff:"Fondée en 1917 comme coopérative des quotidiens canadiens, elle couvre le pays en anglais et en français.",fe:"Founded in 1917 as a cooperative of Canadian newspapers, it covers the country in both English and French."},
+{id:40,nf:"Bernama",ne:"Bernama",pf:"Malaisie",pe:"Malaysia",cont:"Asie",ville:"Kuala Lumpur",fond:1968,sf:"Agence d'État",se:"State agency",lat:3.1390,lng:101.6869,lang:"MS, EN, AR, ZH",wiki:"Bernama",wl:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Bernama_TV.png/960px-Bernama_TV.png",wb:"",ff:"Agence nationale malaisienne créée en 1968, onze ans après l'indépendance du pays.",fe:"Malaysia's national news agency, created in 1968, eleven years after the country's independence."},
+{id:41,nf:"Antara",ne:"Antara",pf:"Indonésie",pe:"Indonesia",cont:"Asie",ville:"Jakarta",fond:1937,sf:"Entreprise publique",se:"State-owned company",lat:-6.2088,lng:106.8456,lang:"ID, EN",wiki:"Antara (news agency)",wl:"https://en.wikipedia.org/wiki/Special:FilePath/Antara%20(news%20agency)%20logo.svg?width=120",wb:"",ff:"Fondée en 1937 sous l'occupation néerlandaise pour diffuser des informations indépendantes des agences coloniales.",fe:"Founded in 1937 under Dutch colonial rule to spread news independent of colonial agencies."},
+{id:42,nf:"Vietnam News Agency (VNA)",ne:"Vietnam News Agency (VNA)",pf:"Vietnam",pe:"Vietnam",cont:"Asie",ville:"Hanoï",fond:1945,sf:"Agence d'État",se:"State agency",lat:21.0278,lng:105.8342,lang:"VI, EN, FR, ES, ZH",wiki:"Vietnam News Agency",wl:"https://en.wikipedia.org/wiki/Special:FilePath/Vietnam%20News%20Agency%20logo.svg?width=120",wb:"",ff:"Créée en 1945 le jour de la déclaration d'indépendance du Vietnam par Hô Chi Minh.",fe:"Created in 1945 on the day Ho Chi Minh declared Vietnamese independence."}
+];
+
+const FLAGS = {"France":"🇫🇷","Royaume-Uni":"🇬🇧","États-Unis":"🇺🇸","Russie":"🇷🇺","Chine":"🇨🇳","Japon":"🇯🇵","Corée du Sud":"🇰🇷","Italie":"🇮🇹","Allemagne":"🇩🇪","Espagne":"🇪🇸","Inde":"🇮🇳","Turquie":"🇹🇷","Belgique":"🇧🇪","Pays-Bas":"🇳🇱","Arabie saoudite":"🇸🇦","Émirats arabes unis":"🇦🇪","Égypte":"🇪🇬","Pologne":"🇵🇱","République tchèque":"🇨🇿","Suède":"🇸🇪","Norvège":"🇳🇴","Danemark":"🇩🇰","Suisse":"🇨🇭","Autriche":"🇦🇹","Cuba":"🇨🇺","Brésil":"🇧🇷","Australie":"🇦🇺","Taïwan":"🇹🇼","Nigeria":"🇳🇬","Maroc":"🇲🇦","Tunisie":"🇹🇳","Angola":"🇦🇴","Ghana":"🇬🇭","Argentine":"🇦🇷","Pérou":"🇵🇪","Canada":"🇨🇦","Malaisie":"🇲🇾","Indonésie":"🇮🇩","Vietnam":"🇻🇳"};
+
+const CONTINENTS = [
+ {key:"all",fr:"Tous",en:"All"},
+ {key:"Europe",fr:"Europe",en:"Europe"},
+ {key:"Asie",fr:"Asie",en:"Asia"},
+ {key:"Moyen-Orient",fr:"Moyen-Orient",en:"Middle East"},
+ {key:"Afrique",fr:"Afrique",en:"Africa"},
+ {key:"Amérique du Nord",fr:"Amérique du Nord",en:"North America"},
+ {key:"Amérique du Sud",fr:"Amérique du Sud",en:"South America"},
+ {key:"Océanie",fr:"Océanie",en:"Oceania"}
+];
+
+/* catalogue complet "Mes Apps" — 9 categories, onglet rapide via icone 📱 */
+const MY_APPS_CAT = [
+ {key:"all",fr:"Tous",en:"All"},
+ {key:"Géographie",fr:"Géographie",en:"Geography"},
+ {key:"Histoire France",fr:"Histoire France",en:"French History"},
+ {key:"Histoire Monde",fr:"Histoire Monde",en:"World History"},
+ {key:"Culture",fr:"Culture",en:"Culture"},
+ {key:"Paris",fr:"Paris",en:"Paris"},
+ {key:"Monuments",fr:"Monuments",en:"Monuments"},
+ {key:"Jeux",fr:"Jeux",en:"Games"},
+ {key:"Kids",fr:"Kids",en:"Kids"},
+ {key:"Utilitaires",fr:"Utilitaires",en:"Utilities"}
+];
+
+const MY_APPS = {
+"Géographie":[
+ {name:"France Geo Quiz",id:"6770453028"},{name:"Europe Geo Quiz",id:"6770458593"},
+ {name:"Amerique du Nord Geo Quiz",id:"6770566450"},{name:"Amerique du Sud Geo Quiz",id:"6770580053"},
+ {name:"Asie Geo Quiz",id:"6770857576"},{name:"Afrique Geo Quiz",id:"6770836826"},
+ {name:"Moyen Orient Geo Quiz",id:"6770848617"},{name:"Europe Hors UE Geo Quiz",id:"6770826067"},
+ {name:"Capitales Europe",id:"6761421276"},{name:"Pays UE",id:"6762346365"},
+ {name:"Etats Unis",id:"6762370541"},{name:"Iles du Monde",id:"6767810270"},
+ {name:"Detroits",id:"6762594201"},{name:"Mers & Oceans",id:"6762598304"}
+],
+"Histoire France":[
+ {name:"Rois de France",id:"6761322546"},{name:"Presidents Francais",id:"6761324444"},
+ {name:"Marechaux Napoleon",id:"6761374601"},{name:"Academie Francaise",id:"6761334922"},
+ {name:"Pantheon Paris",id:"6761335268"},{name:"Legion Honneur",id:"6768320574"},
+ {name:"Basilique Saint-Denis",id:"6761709149"},{name:"Senat Paris",id:"6761363063"},
+ {name:"Assemblee Paris",id:"6761361079"},{name:"Conquetes Sociales",id:"6762542395"}
+],
+"Histoire Monde":[
+ {name:"Nobels de la Paix",id:"6763569148"},{name:"Peintres Celebres",id:"6768068634"},
+ {name:"Architectes Celebres",id:"6770302783"},{name:"Athletes Celebres",id:"6770102339"},
+ {name:"Explorateurs du Monde",id:"6768003416"},{name:"Familles Royales",id:"6762098486"},
+ {name:"Dynasties Royales",id:"6762208827"},{name:"Dynasties Chinoises",id:"6762522136"},
+ {name:"Dynasties Russes",id:"6762452564"},{name:"Presidents Americains",id:"6762256169"},
+ {name:"Leaders Europeens",id:"6762263227"},{name:"Institutions Mondiales",id:"6767492967"},
+ {name:"Machines Legendaires",id:"6767273597"},{name:"Histoire Informatique",id:"6766260978"},
+ {name:"Micro-Informatique",id:"6766261703"}
+],
+"Culture":[
+ {name:"Compositeurs",id:"6761656628"},{name:"Auteurs de BD",id:"6767135193"},
+ {name:"Comedie Francaise",id:"6761993002"},{name:"Institut de France",id:"6761769529"},
+ {name:"Arbres de France",id:"6761685637"},{name:"Iconic Covers",id:"6762006105"},
+ {name:"Legendes Pop",id:"6769653710"},{name:"Rosiers du Monde",id:"6773255479"}
+],
+"Paris":[
+ {name:"Musees Paris",id:"6760890465"},{name:"Theatres Paris",id:"6760929391"},
+ {name:"Scenes Paris",id:"6761293938"},{name:"Cimetieres Paris",id:"6760751055"},
+ {name:"Hotels RoofTop Paris",id:"6763507194"}
+],
+"Monuments":[
+ {name:"Aeroports Mythiques",id:"6764087562"},{name:"Gratte-Ciels du Monde",id:"6763857843"},
+ {name:"Paquebots Liners",id:"6763076110"},{name:"Avions de Legende",id:"6763069304"},
+ {name:"Voitures de Legende",id:"6763071567"},{name:"Trains Mythiques",id:"6762632868"},
+ {name:"Ponts du Monde",id:"6762618424"},{name:"Chateaux de la Loire",id:"6762823383"}
+],
+"Jeux":[
+ {name:"App Solitaire",id:"6769310796"},{name:"Tuiles Numeriques",id:"6768574161"},
+ {name:"Bataille Navale",id:"6762091681"},{name:"Dames Checkers",id:"6762076518"},
+ {name:"Flip Board",id:"6762077646"},{name:"ColorCodeMind",id:"6762558969"},
+ {name:"Lexigo",id:"6762552826"},{name:"Toi ou Moi",id:"1475884625"}
+],
+"Kids":[
+ {name:"Coloriage Kids",id:"6773000126"},{name:"Memo Animaux Kids",id:"6773621753"},
+ {name:"Petit Bilingue Kids",id:"6773656650"},{name:"Dinosaures Kids",id:"6773037110"},
+ {name:"Animaux Kids",id:"6772937635"},{name:"Lettres Kids",id:"6772548541"},
+ {name:"Chiffres Kids",id:"6772546976"},{name:"Mahjong Kids",id:"6772468506"}
+],
+"Utilitaires":[
+ {name:"FreshFood Manager",id:"6759219383"},{name:"Cave Manager",id:"6760126279"},
+ {name:"MesRestaurants",id:"6760617965"},{name:"MediSafe",id:"6761271324"},
+ {name:"Belote Calc",id:"1483084001"},{name:"Tarots Calc",id:"1481989301"}
+]
+};
+let activeAppCat = MY_APPS_CAT[0].key;
+
+const STR = {
+ title:{fr:"Agences de Presse",en:"News Agencies"},
+ list:{fr:"Liste",en:"List"},
+ map:{fr:"Carte",en:"Map"},
+ myApps:{fr:"Mes Apps",en:"My Apps"},
+ search:{fr:"Agence, pays...",en:"Agency, country..."},
+ founded:{fr:"Fondation",en:"Founded"},
+ status:{fr:"Statut",en:"Status"},
+ languages:{fr:"Langues",en:"Languages"},
+ showMap:{fr:"Voir sur la carte",en:"Show on map"},
+ back:{fr:"Retour",en:"Back"},
+ noResults:{fr:"Aucune agence trouvée",en:"No agency found"},
+ viewDetail:{fr:"Voir la fiche",en:"View details"},
+ logoOnly:{fr:"Logo (pas de photo du siège disponible)",en:"Logo (no headquarters photo available)"}
+};
+const CONT_EN = {"Europe":"Europe","Asie":"Asia","Moyen-Orient":"Middle East","Afrique":"Africa","Amérique du Nord":"North America","Amérique du Sud":"South America","Océanie":"Oceania"};
+
+/* =========================================================
+   ETAT
+   ========================================================= */
+let lang = 'fr';
+let activeContinent = 'all';
+let searchQuery = '';
+let currentDetailId = null;
+let previousView = 'list';
+let mapInstance = null;
+let mapMarkers = {};
+
+function L_(key){ return STR[key][lang]; }
+
+/* =========================================================
+   INIT
+   ========================================================= */
+function init(){
+  applyFontSize();
+  document.getElementById('appTitle').textContent = L_('title');
+  document.getElementById('btnLang').textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
+  document.getElementById('searchInput').placeholder = L_('search');
+  document.querySelector('#tabList .lbl').textContent = L_('list');
+  document.querySelector('#tabMap .lbl').textContent = L_('map');
+  document.querySelector('#tabApps .lbl').textContent = L_('myApps');
+
+  renderChips();
+  renderList();
+  renderMyApps();
+  bindEvents();
+}
+
+/* =========================================================
+   NAVIGATION ENTRE VUES
+   ========================================================= */
+function switchView(view){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const tab = document.querySelector('.tab[data-view="' + view + '"]');
+  if (tab) tab.classList.add('active');
+
+  const main = document.getElementById('main');
+  const chips = document.getElementById('chipsRow');
+  if (view === 'map'){
+    main.classList.add('flush');
+    chips.style.display = 'none';
+    document.getElementById('searchWrap').classList.remove('active');
+    requestAnimationFrame(initOrRefreshMap);
+  } else {
+    main.classList.remove('flush');
+    chips.style.display = (view === 'list') ? 'flex' : 'none';
+  }
+}
+
+/* =========================================================
+   LISTE
+   ========================================================= */
+function renderChips(){
+  const row = document.getElementById('chipsRow');
+  row.innerHTML = '';
+  CONTINENTS.forEach(c => {
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (c.key === activeContinent ? ' active' : '');
+    chip.textContent = lang === 'fr' ? c.fr : c.en;
+    chip.onclick = () => { activeContinent = c.key; renderChips(); renderList(); };
+    row.appendChild(chip);
+  });
+}
+
+/* miniature liste: demande une version 120px a Wikimedia quand possible
+   (URLs du type .../thumb/.../960px-Fichier.ext -> .../thumb/.../120px-Fichier.ext) */
+function listThumb(url){
+  return url.replace('/960px-', '/120px-');
+}
+
+function renderList(){
+  const container = document.getElementById('view-list');
+  const q = searchQuery.trim().toLowerCase();
+
+  const items = DATA.filter(d => {
+    if (activeContinent !== 'all' && d.cont !== activeContinent) return false;
+    if (!q) return true;
+    const hay = (d.nf + ' ' + d.ne + ' ' + d.pf + ' ' + d.pe + ' ' + d.ville).toLowerCase();
+    return hay.includes(q);
+  });
+
+  if (items.length === 0){
+    container.innerHTML = '<div class="empty">' + L_('noResults') + '</div>';
+    return;
+  }
+
+  container.innerHTML = items.map(d => {
+    const name = lang === 'fr' ? d.nf : d.ne;
+    const country = lang === 'fr' ? d.pf : d.pe;
+    const flag = FLAGS[d.pf] || '🌐';
+    const thumb = d.wl
+      ? '<img class="card-thumb" src="' + listThumb(d.wl) + '" alt="" loading="lazy">'
+      : '<div class="card-thumb-ph">📰</div>';
+    return '<div class="card" onclick="showDetail(' + d.id + ')">' +
+      '<div class="card-media">' + thumb + '<div class="card-flag">' + flag + '</div></div>' +
+      '<div class="card-info">' +
+        '<div class="card-name">' + name + '</div>' +
+        '<div class="card-meta">' + country + ' · ' + d.ville + ' · ' + d.fond + '</div>' +
+      '</div>' +
+      '<div class="card-arrow">›</div>' +
+    '</div>';
+  }).join('');
+}
+
+/* =========================================================
+   DETAIL
+   ========================================================= */
+function showDetail(id, from){
+  previousView = from || 'list';
+  currentDetailId = id;
+  buildDetail();
+  switchView('detail');
+}
+
+function backFromDetail(){
+  switchView(previousView);
+}
+
+/* construit le DOM une seule fois */
+function buildDetail(){
+  const container = document.getElementById('view-detail');
+  const d = DATA.find(x => x.id === currentDetailId);
+  if (!d) return;
+
+  container.innerHTML =
+    '<button class="back-btn" onclick="backFromDetail()">‹ <span id="dBack"></span></button>' +
+    '<div class="detail-img" id="dImg"></div>' +
+    '<div class="img-note" id="dImgNote"></div>' +
+    '<div class="detail-title" id="dTitle"></div>' +
+    '<div class="detail-sub" id="dSub"></div>' +
+    '<div class="detail-grid">' +
+      '<div class="detail-stat"><div class="lbl" id="dLbl1"></div><div class="val" id="dVal1"></div></div>' +
+      '<div class="detail-stat"><div class="lbl" id="dLbl2"></div><div class="val" id="dVal2"></div></div>' +
+      '<div class="detail-stat"><div class="lbl" id="dLbl3"></div><div class="val" id="dVal3"></div></div>' +
+      '<div class="detail-stat"><div class="lbl" id="dLbl4"></div><div class="val" id="dVal4"></div></div>' +
+    '</div>' +
+    '<div class="detail-fact" id="dFact"></div>' +
+    '<button class="detail-map-btn" id="dMapBtn" onclick="showOnMap(' + d.id + ')"></button>';
+
+  const img = document.getElementById('dImg');
+  if (d.wb){
+    img.innerHTML = '<img src="' + d.wb + '" alt="">';
+  } else if (d.wl){
+    img.innerHTML = '<img src="' + d.wl + '" alt="">';
+  } else {
+    img.innerHTML = '<div class="ph">📰</div>';
+  }
+
+  updateDetailTexts();
+}
+
+/* ne touche qu'aux textes — jamais à renderDetail/buildDetail */
+function updateDetailTexts(){
+  const d = DATA.find(x => x.id === currentDetailId);
+  if (!d) return;
+
+  document.getElementById('dBack').textContent = L_('back');
+  document.getElementById('dImgNote').textContent = d.wb ? '' : (d.wl ? L_('logoOnly') : 'wiki: ' + d.wiki);
+  document.getElementById('dTitle').textContent = lang === 'fr' ? d.nf : d.ne;
+  document.getElementById('dSub').textContent = (lang === 'fr' ? d.pf : d.pe) + ' · ' + d.ville;
+
+  document.getElementById('dLbl1').textContent = L_('founded');
+  document.getElementById('dVal1').textContent = d.fond;
+
+  document.getElementById('dLbl2').textContent = L_('status');
+  document.getElementById('dVal2').textContent = lang === 'fr' ? d.sf : d.se;
+
+  document.getElementById('dLbl3').textContent = L_('languages');
+  document.getElementById('dVal3').textContent = d.lang;
+
+  document.getElementById('dLbl4').textContent = lang === 'fr' ? 'Continent' : 'Continent';
+  document.getElementById('dVal4').textContent = lang === 'fr' ? d.cont : (CONT_EN[d.cont] || d.cont);
+
+  document.getElementById('dFact').textContent = lang === 'fr' ? d.ff : d.fe;
+  document.getElementById('dMapBtn').textContent = '🗺️ ' + L_('showMap');
+}
+
+function showOnMap(id){
+  switchView('map');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tabMap').classList.add('active');
+  requestAnimationFrame(() => {
+    initOrRefreshMap();
+    const d = DATA.find(x => x.id === id);
+    if (d && mapInstance){
+      mapInstance.setView([d.lat, d.lng], 6);
+      if (mapMarkers[id]) mapMarkers[id].openPopup();
+    }
+  });
+}
+
+/* =========================================================
+   CARTE
+   ========================================================= */
+function initOrRefreshMap(){
+  if (!mapInstance){
+    mapInstance = L.map('map', {zoomControl:true}).setView([25, 10], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 18
+    }).addTo(mapInstance);
+
+    const icon = L.divIcon({html:'<div class="map-pin">📰</div>', className:'', iconSize:[26,26], iconAnchor:[13,22], popupAnchor:[0,-20]});
+
+    DATA.forEach(d => {
+      const marker = L.marker([d.lat, d.lng], {icon: icon}).addTo(mapInstance);
+      marker.bindPopup(buildPopup(d));
+      mapMarkers[d.id] = marker;
+    });
+  }
+  setTimeout(() => mapInstance.invalidateSize(), 50);
+}
+
+function buildPopup(d){
+  const name = lang === 'fr' ? d.nf : d.ne;
+  return '<span class="popup-name">' + name + '</span>' +
+    '<button class="popup-btn" onclick="showDetail(' + d.id + ',\'map\')">' + L_('viewDetail') + '</button>';
+}
+
+function refreshMapPopups(){
+  if (!mapInstance) return;
+  DATA.forEach(d => {
+    const m = mapMarkers[d.id];
+    if (m) m.setPopupContent(buildPopup(d));
+  });
+}
+
+/* =========================================================
+   MES APPS
+   ========================================================= */
+function renderMyApps(){
+  const container = document.getElementById('view-myapps');
+  container.innerHTML = '<div class="cat-chips" id="appCatChips"></div><div class="mosaic" id="appsGrid"></div>';
+  renderAppCatChips();
+  renderAppsGrid();
+}
+
+function renderAppCatChips(){
+  const row = document.getElementById('appCatChips');
+  if (!row) return;
+  row.innerHTML = '';
+  MY_APPS_CAT.forEach(c => {
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (c.key === activeAppCat ? ' active' : '');
+    chip.textContent = lang === 'fr' ? c.fr : c.en;
+    chip.onclick = () => { activeAppCat = c.key; renderAppCatChips(); renderAppsGrid(); };
+    row.appendChild(chip);
+  });
+}
+
+function renderAppsGrid(){
+  const grid = document.getElementById('appsGrid');
+  const apps = activeAppCat === 'all'
+    ? Object.values(MY_APPS).flat()
+    : (MY_APPS[activeAppCat] || []);
+  grid.innerHTML = apps.map((app, i) =>
+    '<a class="mosaic-item" href="https://apps.apple.com/app/id' + app.id + '" target="_blank">' +
+      '<img class="mosaic-icon" id="mi' + i + '" alt="">' +
+      '<div class="mosaic-name">' + app.name + '</div>' +
+    '</a>'
+  ).join('');
+
+  apps.forEach((app, i) => loadItunesIcon(app.id, 'mi' + i));
+}
+
+/* JSONP iTunes — pattern habituel */
+function loadItunesIcon(numId, imgId){
+  const cb = 'itcb' + numId + '_' + imgId;
+  window[cb] = function(d){
+    const img = document.getElementById(imgId);
+    if (img && d.results && d.results[0]) img.src = d.results[0].artworkUrl60;
+  };
+  const s = document.createElement('script');
+  s.src = 'https://itunes.apple.com/lookup?id=' + numId + '&callback=' + cb;
+  document.body.appendChild(s);
+}
+
+/* =========================================================
+   LANGUE
+   ========================================================= */
+function setLang(l){
+  if (lang === l) return;
+  lang = l;
+  document.getElementById('btnLang').textContent = lang === 'fr' ? '🇫🇷' : '🇬🇧';
+  document.getElementById('appTitle').textContent = L_('title');
+  document.getElementById('searchInput').placeholder = L_('search');
+  document.querySelector('#tabList .lbl').textContent = L_('list');
+  document.querySelector('#tabMap .lbl').textContent = L_('map');
+  document.querySelector('#tabApps .lbl').textContent = L_('myApps');
+
+  renderChips();
+  renderList();
+  renderAppCatChips();
+  refreshMapPopups();
+
+  if (currentDetailId !== null) updateDetailTexts();
+}
+
+/* =========================================================
+   TAILLE DE POLICE — automatique, plus de boutons A−/A+
+   ========================================================= */
+const isIpad = /iPad/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+  window.innerWidth >= 768;
+const fontSize = isIpad ? 1.5 : 1;
+function applyFontSize(){
+  document.documentElement.style.setProperty('--fs', fontSize);
+}
+
+/* =========================================================
+   EVENEMENTS
+   ========================================================= */
+function bindEvents(){
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => switchView(tab.dataset.view));
+  });
+
+  document.getElementById('btnLang').addEventListener('click', () => setLang(lang === 'fr' ? 'en' : 'fr'));
+
+  const searchWrap = document.getElementById('searchWrap');
+  const searchInput = document.getElementById('searchInput');
+  const searchClear = document.getElementById('searchClear');
+
+  document.getElementById('btnSearch').addEventListener('click', () => {
+    searchWrap.classList.toggle('active');
+    if (searchWrap.classList.contains('active')) searchInput.focus();
+  });
+
+  searchInput.addEventListener('input', () => {
+    searchQuery = searchInput.value;
+    searchClear.style.display = searchQuery ? 'flex' : 'none';
+    renderList();
+  });
+
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchQuery = '';
+    searchClear.style.display = 'none';
+    renderList();
+    searchInput.focus();
+  });
+}
+
+init();
+</script>
+</body>
+</html>

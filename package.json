@@ -1,0 +1,15 @@
+{
+  "name": "Agences de Presse",
+  "version": "1.0.0",
+  "description": "Agences de Presse",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'No build step needed'"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0"
+  },
+  "author": "Michel Garlandat",
+  "license": "UNLICENSED"
+}
